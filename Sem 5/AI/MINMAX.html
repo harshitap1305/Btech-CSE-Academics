@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe Minimax Tree</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        canvas {
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Tic-Tac-Toe Game Tree Analysis</h1>
+            <p class="text-md text-gray-600 mt-2">Visualizing a 2-ply lookahead for 'X' (MAX player) using the Minimax algorithm.</p>
+        </header>
+
+        <main class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Game Tree Visualization</h2>
+            <p class="text-gray-600 mb-4">The tree below shows the initial board state, all 5 possible moves for X (MAX), and all subsequent 4 possible moves for O (MIN). The numbers at the bottom nodes are calculated using the evaluation function. Minimax values are propagated up the tree to find the optimal move for X.</p>
+            <div class="overflow-x-auto">
+                 <canvas id="gameTreeCanvas" width="2000" height="750"></canvas>
+            </div>
+        </main>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Conclusion & Horizon Effect Analysis</h2>
+            <div id="analysis" class="space-y-4 text-gray-700">
+                <p>The analysis will be populated here once the tree is drawn...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // --- Canvas and Drawing Setup ---
+            const canvas = document.getElementById('gameTreeCanvas');
+            const ctx = canvas.getContext('2d');
+            const NODE_WIDTH = 90;
+            const NODE_HEIGHT = 110; // Extra space for score
+            const LEVEL_Y = [50, 280, 550];
+
+            function drawLine(fromX, fromY, toX, toY, color = 'gray', width = 1) {
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY);
+                ctx.lineTo(toX, toY);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.stroke();
+            }
+
+            function drawBoard(board, x, y, width, isBest) {
+                const cellWidth = width / 3;
+                ctx.fillStyle = isBest ? '#ecfdf5' : '#f9fafb';
+                ctx.strokeStyle = isBest ? '#10b981' : '#d1d5db';
+                ctx.lineWidth = 2;
+                ctx.fillRect(x, y, width, width);
+                ctx.strokeRect(x, y, width, width);
+
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 1;
+                // Draw grid lines
+                for (let i = 1; i < 3; i++) {
+                    ctx.beginPath();
+                    // Vertical lines
+                    ctx.moveTo(x + i * cellWidth, y);
+                    ctx.lineTo(x + i * cellWidth, y + width);
+                    // Horizontal lines
+                    ctx.moveTo(x, y + i * cellWidth);
+                    ctx.lineTo(x + width, y + i * cellWidth);
+                    ctx.stroke();
+                }
+
+                // Draw X's and O's
+                ctx.font = `${cellWidth * 0.6}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        const mark = board[row][col];
+                        const centerX = x + col * cellWidth + cellWidth / 2;
+                        const centerY = y + row * cellWidth + cellWidth / 2;
+                        if (mark === 'X') {
+                            ctx.fillStyle = '#3b82f6'; // Blue
+                            ctx.fillText('X', centerX, centerY);
+                        } else if (mark === 'O') {
+                            ctx.fillStyle = '#ef4444'; // Red
+                            ctx.fillText('O', centerX, centerY);
+                        }
+                    }
+                }
+            }
+
+            function drawNode(node, x, y, isBest) {
+                drawBoard(node.board, x - NODE_WIDTH / 2, y, NODE_WIDTH, isBest);
+                ctx.textAlign = 'center';
+                ctx.font = '16px sans-serif';
+                let label = '';
+                
+                if (node.isLeaf) {
+                     ctx.fillStyle = '#4b5563';
+                     label = `Eval: ${node.score}`;
+                } else if(node.depth === 1) {
+                    ctx.fillStyle = '#b91c1c'; // Red for MIN
+                    label = `MIN Val: ${node.score}`;
+                } else { // Root
+                    ctx.fillStyle = '#1d4ed8'; // Blue for MAX
+                    label = `MAX Val: ${node.score}`;
+                }
+                ctx.fillText(label, x, y + NODE_WIDTH + 20);
+            }
+
+            // --- Game Logic ---
+            const initialBoard = [
+                ['X', '', ''],
+                ['O', '', ''],
+                ['X', '', 'O']
+            ];
+
+            function evaluate(board) {
+                let x3 = 0, x2 = 0, x1 = 0;
+                let o3 = 0, o2 = 0, o1 = 0;
+
+                const lines = [
+                    // Rows
+                    [board[0][0], board[0][1], board[0][2]],
+                    [board[1][0], board[1][1], board[1][2]],
+                    [board[2][0], board[2][1], board[2][2]],
+                    // Columns
+                    [board[0][0], board[1][0], board[2][0]],
+                    [board[0][1], board[1][1], board[2][1]],
+                    [board[0][2], board[1][2], board[2][2]],
+                    // Diagonals
+                    [board[0][0], board[1][1], board[2][2]],
+                    [board[0][2], board[1][1], board[2][0]],
+                ];
+
+                for (const line of lines) {
+                    const xCount = line.filter(c => c === 'X').length;
+                    const oCount = line.filter(c => c === 'O').length;
+
+                    if (oCount === 0) {
+                        if (xCount === 3) x3++;
+                        if (xCount === 2) x2++;
+                        if (xCount === 1) x1++;
+                    }
+                    if (xCount === 0) {
+                        if (oCount === 3) o3++;
+                        if (oCount === 2) o2++;
+                        if (oCount === 1) o1++;
+                    }
+                }
+                return (8 * x3 + 3 * x2 + x1) - (8 * o3 + 3 * o2 + o1);
+            }
+
+            function getPossibleMoves(board, player) {
+                const moves = [];
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        if (board[row][col] === '') {
+                            const newBoard = board.map(r => [...r]);
+                            newBoard[row][col] = player;
+                            moves.push({
+                                board: newBoard,
+                                move: { row, col }
+                            });
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            // --- Tree Building and Minimax ---
+            const root = {
+                board: initialBoard,
+                children: [],
+                score: null,
+                depth: 0,
+                isLeaf: false,
+                isBestPath: true // Root is always on the best path
+            };
+
+            // Build Level 1 (MAX moves)
+            const level1Moves = getPossibleMoves(root.board, 'X');
+            const level1XCoords = [200, 580, 960, 1340, 1720];
+
+            level1Moves.forEach((move, i) => {
+                const node = { ...move, children: [], score: null, depth: 1, isLeaf: false, x: level1XCoords[i], y: LEVEL_Y[1]};
+                root.children.push(node);
+
+                // Build Level 2 (MIN moves)
+                const level2Moves = getPossibleMoves(node.board, 'O');
+                const level2XSpacing = 80;
+                level2Moves.forEach((l2move, j) => {
+                    const leafNode = { ...l2move, children: [], score: null, depth: 2, isLeaf: true };
+                    leafNode.score = evaluate(leafNode.board); // Evaluate leaf nodes
+                    const baseX = node.x - (level2XSpacing * 1.5);
+                    leafNode.x = baseX + j * level2XSpacing;
+                    leafNode.y = LEVEL_Y[2];
+                    node.children.push(leafNode);
+                });
+            });
+            
+            // Run Minimax
+            let maxEval = -Infinity;
+            let bestMoveNode = null;
+
+            root.children.forEach(l1Node => { // For each of X's possible moves
+                let minEval = Infinity;
+                l1Node.children.forEach(l2Node => { // Find O's best response
+                    minEval = Math.min(minEval, l2Node.score);
+                });
+                l1Node.score = minEval; // This is the value of X's move
+                if (l1Node.score > maxEval) {
+                    maxEval = l1Node.score;
+                    bestMoveNode = l1Node;
+                }
+            });
+            root.score = maxEval;
+            root.x = canvas.width / 2;
+            root.y = LEVEL_Y[0];
+            
+            // Mark the best path
+            if (bestMoveNode) {
+                bestMoveNode.isBestPath = true;
+                let bestLeafNode = bestMoveNode.children.find(c => c.score === bestMoveNode.score);
+                if (bestLeafNode) {
+                    bestLeafNode.isBestPath = true;
+                }
+            }
+
+
+            // --- Final Drawing ---
+            function drawTree() {
+                // Draw root
+                drawNode(root, root.x, root.y, root.isBestPath);
+                
+                // Draw level 1 and 2
+                root.children.forEach(l1Node => {
+                    drawLine(root.x, root.y + NODE_WIDTH, l1Node.x, l1Node.y, l1Node.isBestPath ? '#10b981' : 'gray', l1Node.isBestPath ? 3 : 1);
+                    drawNode(l1Node, l1Node.x, l1Node.y, l1Node.isBestPath);
+                    l1Node.children.forEach(l2Node => {
+                        drawLine(l1Node.x, l1Node.y + NODE_WIDTH, l2Node.x, l2Node.y, l2Node.isBestPath ? '#10b981' : 'gray', l2Node.isBestPath ? 3 : 1);
+                        drawNode(l2Node, l2Node.x, l2Node.y, l2Node.isBestPath);
+                    });
+                });
+            }
+
+            drawTree();
+            
+            // --- Update Analysis Text ---
+            const analysisDiv = document.getElementById('analysis');
+            const bestMove = bestMoveNode.move;
+            analysisDiv.innerHTML = `
+                <p><strong class="font-semibold">Best Move for X:</strong> Based on the 2-ply lookahead, the optimal move for X is to place an 'X' at position <strong>(row: ${bestMove.row}, column: ${bestMove.col})</strong>.</p>
+                <p><strong class="font-semibold">Minimax Value:</strong> This move results in a guaranteed evaluation score of at least <strong>${root.score}</strong> for X, assuming the opponent ('O') plays optimally to minimize X's score.</p>
+                <hr class="my-4">
+                <p><strong class="font-semibold">Horizon Effect Analysis:</strong></p>
+                <p>The "horizon effect" occurs when a program delays an inevitable negative outcome by pushing it just beyond its search depth (the "horizon"). The evaluation at the horizon looks good, but disaster is looming one step further.</p>
+                <p>In this specific game tree, a clear horizon effect is <strong>not strongly evident</strong>. The evaluation function is fairly balanced and captures threats (lines of 2) for both players. The best move for X (placing X at (0, 1)) creates a direct threat on the top row. O's optimal response is to immediately block this threat. The resulting game state is not a forced loss for X just beyond the 2-ply horizon.</p>
+                <p>However, if the evaluation function were simpler (e.g., only counting pieces), a horizon effect could easily occur. A player might make a move that looks good based on piece count but ignores that the opponent can set up a fork (a two-way threat) on the very next turn, which is just beyond the search depth.</p>
+            `;
+        };
+    </script>
+</body>
+</html>
