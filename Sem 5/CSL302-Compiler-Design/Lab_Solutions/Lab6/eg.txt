@@ -1,0 +1,21 @@
+int a, b, c;
+float x;
+
+a = 5;
+b = 10;
+c = 0;
+
+if (a < b) then { c = a + b; }
+
+if (a == 5) then { b = 1; } else { b = 2; }
+
+if (a > 0) then { x = 1; } elif ( a == 0 ) { x = 0; } else { x = 0; }
+
+switch (a) { case 1: b = 100; case 5: b = 200; }
+
+while ( c < 10 ) { c = c + 1; }
+
+do { b = b - 1; } while ( b > 0 );
+
+for ( a = 0; a < 5; a = a + 1 ) c = c + a;
+
