@@ -1,0 +1,80 @@
+CREATE OR REPLACE VIEW valid_segments AS
+SELECT 
+    t1.train AS train_no,
+    t1.station AS start_stn,
+    t2.station AS end_stn
+FROM schedule t1
+JOIN schedule t2 ON t1.train = t2.train
+WHERE 
+    t1.station <> t2.station
+    -- Logic: Arrival at Stn2 must be AFTER Departure at Stn1
+    AND (
+        (t2.arrdate > t1.depdate) 
+        OR 
+        (t2.arrdate = t1.depdate AND t2.arr > t1.dep)
+    );
+    
+DROP TABLE IF EXISTS trip_plans;
+
+CREATE TABLE trip_plans (
+    StationA VARCHAR(10),
+    StationB VARCHAR(10),
+    Train1 INT,
+    Change1 VARCHAR(10),
+    Train2 INT,
+    Change2 VARCHAR(10),
+    Train3 INT,
+    -- Extra columns for Task 2 (optional)
+    Change3 VARCHAR(10),
+    Train4 INT
+);
+    
+INSERT INTO trip_plans (StationA, StationB, Train1)
+SELECT DISTINCT 
+    v.start_stn, 
+    v.end_stn, 
+    v.train_no
+FROM valid_segments v
+JOIN terminus t_start ON v.start_stn = t_start.station
+JOIN terminus t_end ON v.end_stn = t_end.station
+WHERE v.start_stn <> v.end_stn;
+
+INSERT INTO trip_plans (StationA, StationB, Train1, Change1, Train2)
+SELECT DISTINCT 
+    seg1.start_stn, 
+    seg2.end_stn, 
+    seg1.train_no, 
+    seg1.end_stn, 
+    seg2.train_no
+FROM valid_segments seg1
+JOIN valid_segments seg2 ON seg1.end_stn = seg2.start_stn
+JOIN terminus t_start ON seg1.start_stn = t_start.station
+JOIN terminus t_end ON seg2.end_stn = t_end.station
+WHERE 
+    seg1.start_stn <> seg2.end_stn 
+    AND seg1.train_no <> seg2.train_no;
+  
+  
+INSERT INTO trip_plans (StationA, StationB, Train1, Change1, Train2, Change2, Train3)
+SELECT DISTINCT 
+    seg1.start_stn, 
+    seg3.end_stn, 
+    seg1.train_no, 
+    seg1.end_stn, 
+    seg2.train_no,
+    seg2.end_stn, 
+    seg3.train_no
+FROM valid_segments seg1
+JOIN valid_segments seg2 ON seg1.end_stn = seg2.start_stn
+JOIN valid_segments seg3 ON seg2.end_stn = seg3.start_stn
+JOIN terminus t_start ON seg1.start_stn = t_start.station
+JOIN terminus t_end ON seg3.end_stn = t_end.station
+WHERE 
+    seg1.start_stn <> seg3.end_stn
+    AND seg1.start_stn <> seg2.end_stn
+    AND seg1.end_stn <> seg3.end_stn
+    AND seg1.train_no <> seg2.train_no
+    AND seg2.train_no <> seg3.train_no
+    AND seg1.train_no <> seg3.train_no;
+ 
+ SELECT * FROM trip_plans ORDER BY StationA, StationB;

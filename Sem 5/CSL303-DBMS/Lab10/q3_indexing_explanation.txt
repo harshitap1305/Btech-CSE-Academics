@@ -1,0 +1,16 @@
+To optimize the slow query, we should create the following indexes:
+
+1. On customers table:
+   CREATE INDEX idx_customers_segment ON customers(customer_segment);
+
+2. On products table:
+   CREATE INDEX idx_products_category ON products(product_category);
+
+3. On orders table:
+   CREATE INDEX idx_orders_cover
+   ON orders(customer_id, product_id, order_date);
+
+This is a covering index because it includes all columns required by the
+JOIN + WHERE + ORDER BY clauses, letting the database answer the query from
+the index without reading the table.
+

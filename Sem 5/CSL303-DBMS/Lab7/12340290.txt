@@ -1,0 +1,214 @@
+//Que 4
+SELECT * FROM Students WHERE major = 'Computer Science';
+
+//Que 5
+Gave this output on terminal: 
+
+QUERY PLAN
+`--SCAN Students
+
+Analysis: scans the entire Students table because no index exists on major.
+
+//Que 6
+
+SELECT s.first_name, s.last_name, c.course_name
+FROM Students s
+JOIN Enrollments e ON s.student_id = e.student_id
+JOIN Courses c ON e.course_id = c.course_id
+WHERE c.department = 'Humanities';
+
+// Que7 
+Gave this output on terminal:
+
+QUERY PLAN
+|--SCAN e
+|--SEARCH s USING INTEGER PRIMARY KEY (rowid=?)
+`--SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+
+Analysis: scans the entire Enrollments table (SCAN e), while Students and Courses are accessed efficiently using their primary keys.
+
+// Que 9
+Gave this output on terminal:
+
+QUERY PLAN
+`--SEARCH Students USING INDEX idx_students_major (major=?)
+
+Analysis: The query now searches using the index idx_students_major, avoiding a full table scan.
+This shows that indexing the major column significantly improves lookup performance.
+
+//Que 11
+Gave this output on terminal:
+
+QUERY PLAN
+|--SCAN e
+|--SEARCH s USING INTEGER PRIMARY KEY (rowid=?)
+`--SEARCH c USING INTEGER PRIMARY KEY (rowid=?)
+
+Analysis: SQLite still performs a full scan on Enrollments (SCAN e), while Students and Courses use their primary keys.
+The optimizer likely found the scan cheaper for this dataset, so the join plan remains mostly unchanged.
+
+--------------PART 3-----------------------------
+
+//Que 12
+
+Terminal Output: 
+
+Index dropped.
+Avg. time without index: 0.001459 seconds
+
+//Que 13
+
+Terminal Output:
+
+Index created.
+Avg. time with index: 0.001589 seconds
+
+
+//Que14
+
+Terminal Output:
+
+Indexes ensured.
+Time to insert 500 records (with indexes): 0.013862 seconds
+
+
+//Que15 
+
+Terminal Output:
+
+Indexes dropped.
+Time to insert 500 records (without indexes): 0.004142 seconds
+
+
+Conclusion: 
+From the experiments, it was observed that indexing does not always guarantee faster query execution. In our case, since all students had the same major ('Engineering'), the index on the major column did not improve performance and even made the query slightly slower due to low data selectivity. However, insertion operations were noticeably slower when indexes were present, as maintaining index structures increases overhead. Overall, indexes are beneficial for queries on columns with diverse values and frequent searches but should be used carefully, as they can degrade insertion and update performance.
+
+
+------------------Scripts For PART 3-----------------------
+
+//Que 12
+
+import sqlite3
+import time
+
+DB_FILE = "university.db"
+QUERY = "SELECT * FROM Students WHERE major = 'Engineering';"
+ITERATIONS = 100
+
+con = sqlite3.connect(DB_FILE)
+cur = con.cursor()
+
+# Drop index if it exists
+try:
+    cur.execute("DROP INDEX idx_students_major")
+    print("Index dropped.")
+except sqlite3.OperationalError:
+    print("Index did not exist.")
+
+total_time = 0
+for _ in range(ITERATIONS):
+    start_time = time.time()
+    cur.execute(QUERY).fetchall()
+    end_time = time.time()
+    total_time += (end_time - start_time)
+
+print(f"Avg. time without index: {total_time / ITERATIONS:.6f} seconds")
+con.close()
+
+----------------------------------
+
+//Que 13
+
+import sqlite3
+import time
+
+DB_FILE = "university.db"
+QUERY = "SELECT * FROM Students WHERE major = 'Engineering';"
+ITERATIONS = 100
+
+con = sqlite3.connect(DB_FILE)
+cur = con.cursor()
+
+# Create index
+cur.execute("CREATE INDEX IF NOT EXISTS idx_students_major ON Students(major)")
+print("Index created.")
+
+total_time = 0
+for _ in range(ITERATIONS):
+    start_time = time.time()
+    cur.execute(QUERY).fetchall()
+    end_time = time.time()
+    total_time += (end_time - start_time)
+
+print(f"Avg. time with index: {total_time / ITERATIONS:.6f} seconds")
+
+con.close()
+
+----------------------------------
+
+//Que 14
+
+import sqlite3
+import random
+import time
+
+DB_FILE = "university.db"
+con = sqlite3.connect(DB_FILE)
+cur = con.cursor()
+
+# Ensure indexes exist
+cur.execute("CREATE INDEX IF NOT EXISTS idx_enrollments_student_id ON Enrollments(student_id)")
+cur.execute("CREATE INDEX IF NOT EXISTS idx_enrollments_course_id ON Enrollments(course_id)")
+print("Indexes ensured.")
+
+start_time = time.time()
+
+for _ in range(500):
+    student_id = random.randint(1, 2000)
+    course_id = random.randint(1, 100)
+    grade = round(random.uniform(2.0, 4.0), 2)
+    cur.execute("INSERT INTO Enrollments (student_id, course_id, grade) VALUES (?, ?, ?)",
+                (student_id, course_id, grade))
+
+con.commit()
+end_time = time.time()
+
+print(f"Time to insert 500 records (with indexes): {end_time - start_time:.6f} seconds")
+con.close()
+
+-------------------------------------
+
+//Que 15
+
+import sqlite3
+import random
+import time
+
+DB_FILE = "university.db"
+con = sqlite3.connect(DB_FILE)
+cur = con.cursor()
+
+# Drop indexes
+try:
+    cur.execute("DROP INDEX idx_enrollments_student_id")
+    cur.execute("DROP INDEX idx_enrollments_course_id")
+    print("Indexes dropped.")
+except sqlite3.OperationalError:
+    print("Indexes did not exist.")
+
+start_time = time.time()
+
+for _ in range(500):
+    student_id = random.randint(1, 2000)
+    course_id = random.randint(1, 100)
+    grade = round(random.uniform(2.0, 4.0), 2)
+    cur.execute("INSERT INTO Enrollments (student_id, course_id, grade) VALUES (?, ?, ?)",
+                (student_id, course_id, grade))
+
+con.commit()
+end_time = time.time()
+
+print(f"Time to insert 500 records (without indexes): {end_time - start_time:.6f} seconds")
+con.close()
+
+--------------------------------
