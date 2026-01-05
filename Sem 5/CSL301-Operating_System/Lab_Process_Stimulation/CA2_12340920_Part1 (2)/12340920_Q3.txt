@@ -1,0 +1,14 @@
+Actual Total Time: 23 units
+Actual CPU Utilization: 43.48% (CPU busy 10 / 23)
+Actual IO Busy: 52.17% (IO busy 12 / 23)
+
+Explanation:
+With SWITCH_ON_END, the scheduler does not switch away from the currently running process when it starts I/O, it only switches when a process finishes.
+
+Comparison with Q1/Q2 (why idle time increased):
+Q1/Q2 (SWITCH_ON_IO) allowed the CPU to immediately pick another ready process when someone started I/O -> CPU utilization approx 66.7% and total time = 15, but in Q3 (SWITCH_ON_END) forces waiting on the blocked process which leads to drop in cpu utilization and idle time increases
+
+Real-world scenarios where SWITCH_ON_END is inefficient:
+
+A single-threaded server that issues blocking disk reads and the scheduler waits on that thread instead of running other ready threads.
+
