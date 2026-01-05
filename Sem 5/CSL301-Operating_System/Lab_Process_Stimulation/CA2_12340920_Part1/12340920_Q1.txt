@@ -1,0 +1,7 @@
+Q1 –
+
+Actual Total Time: 15 units
+Actual CPU Utilization: 66.67%
+
+Explanation:
+With SWITCH_ON_IO + IO_RUN_LATER, the CPU switches to another ready process whenever the running process starts I/O. However, processes that complete I/O must wait until the currently running process finishes before resuming CPU work.

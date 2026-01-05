@@ -1,0 +1,10 @@
+Q2 – SWITCH_ON_IO + IO_RUN_IMMEDIATE
+
+Actual Total Time: 15 units
+Actual CPU Utilization: 66.67%
+
+Explanation:
+With SWITCH_ON_IO + IO_RUN_IMMEDIATE, whenever a process finishes I/O it immediately re-enters the ready queue and can preempt the CPU. This ensures minimal waiting for processes after I/O completion.
+
+Comparison with Q1:
+Unlike IO_RUN_LATER in Q1, IO_RUN_IMMEDIATE reduces the chance of a process waiting unnecessarily after I/O. However, in this case total time is unchanged (15 units) because CPU idle periods still only occur when all processes are performing I/O.
