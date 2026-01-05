@@ -1,0 +1,11 @@
+#define
+#include
+#else
+"hello world"  myfile.h yourfile.c 
+2433  899.98  + - == 
+@@this is my comment for this line      hiii comment
+"""" and here begins my 
+multi line 
+comment
+"""
+ $Id
