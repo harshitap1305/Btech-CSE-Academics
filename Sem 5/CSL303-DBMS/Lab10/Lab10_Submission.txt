@@ -1,0 +1,83 @@
+WITH RECURSIVE org AS (
+    SELECT 
+        employee_id,
+        employee_name,
+        manager_id,
+        0 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT 
+        e.employee_id,
+        e.employee_name,
+        e.manager_id,
+        o.level + 1
+    FROM employees e
+    JOIN org o ON e.manager_id = o.employee_id
+)
+SELECT * FROM org
+ORDER BY level, employee_id;
+
+SELECT
+    product_id,
+    sale_date,
+    sale_amount,
+    AVG(sale_amount) OVER (
+        PARTITION BY product_id
+        ORDER BY sale_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7_days,
+    (sale_amount -
+        LAG(sale_amount) OVER (PARTITION BY product_id ORDER BY sale_date)
+     ) / LAG(sale_amount) OVER (PARTITION BY product_id ORDER BY sale_date)
+     * 100 AS pct_change
+FROM sales
+ORDER BY product_id, sale_date;
+
+To optimize the slow query, we should create the following indexes:
+
+1. On customers table:
+   CREATE INDEX idx_customers_segment ON customers(customer_segment);
+
+2. On products table:
+   CREATE INDEX idx_products_category ON products(product_category);
+
+3. On orders table:
+   CREATE INDEX idx_orders_cover
+   ON orders(customer_id, product_id, order_date);
+
+This is a covering index because it includes all columns required by the
+JOIN + WHERE + ORDER BY clauses, letting the database answer the query from
+the index without reading the table.
+
+db.articles.aggregate([
+  { $match: { views: { $gt: 1000 } } },
+  { $unwind: "$tags" },
+  {
+    $group: {
+      _id: "$tags",
+      avgComments: { $avg: { $size: "$comments" } },
+      avgLikes: { $avg: { $avg: "$comments.likes" } }
+    }
+  },
+  { $sort: { avgLikes: -1 } }
+]);
+
+// Create 2dsphere index
+db.restaurants.createIndex({ location: "2dsphere" });
+
+// Find restaurants in 5 km
+db.restaurants.find({
+  location: {
+    $near: {
+      $geometry: {
+        type: "Point",
+        coordinates: [-73.98, 40.77]
+      },
+      $maxDistance: 5000
+    }
+  }
+});
+
