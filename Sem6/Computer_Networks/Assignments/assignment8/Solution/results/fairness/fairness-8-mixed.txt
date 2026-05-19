@@ -1,0 +1,10 @@
+# flowId  type  bytes  throughput_Mbps
+0	NewReno	890136	0.245555
+1	NewReno	931408	0.25694
+2	NewReno	774896	0.213764
+3	NewReno	752384	0.207554
+4	Harshita	786152	0.21687
+5	Harshita	871912	0.240527
+6	Harshita	830104	0.228994
+7	Harshita	841896	0.232247
+JAIN_INDEX	0.995254

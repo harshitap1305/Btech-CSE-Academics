@@ -1,0 +1,5 @@
+video.server.com 127.0.0.1
+test.server.com 192.168.1.10
+google.com 192.178.211.139
+iitbhilai.ac.in 192.168.10.115
+localhost 127.0.0.1

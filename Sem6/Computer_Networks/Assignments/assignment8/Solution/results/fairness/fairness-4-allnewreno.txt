@@ -1,0 +1,6 @@
+# flowId  type  bytes  throughput_Mbps
+0	NewReno	1641072	0.45271
+1	NewReno	1852792	0.511115
+2	NewReno	1469016	0.405246
+3	NewReno	1728440	0.476811
+JAIN_INDEX	0.993077
